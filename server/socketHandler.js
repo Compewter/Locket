@@ -143,7 +143,6 @@ io.on('connection', function(socket) {
   set up all handlers (socket.on()) inside listen function
     connection
       respond to user with their friends list
-
     sendMessage (handles receipt of new message from users)
       {
         to: ,
@@ -173,5 +172,4 @@ io.on('connection', function(socket) {
         socket.emit('keyRequested' {from}) 
     disconnect
       notify all friends that this user has signed off
-
 */
