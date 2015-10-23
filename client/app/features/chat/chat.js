@@ -3,7 +3,6 @@ angular.module('Locket.chat', ['luegg.directives'])
 .controller('chatController', function ($scope, authFactory, $stateParams, socket) {
   authFactory.signedin().then(function(resp){
     if (resp === "OK") {
-
       socket.connect();
       $scope.currentUser = $stateParams.currentUser;
       $scope.friends = [];
@@ -19,22 +18,14 @@ angular.module('Locket.chat', ['luegg.directives'])
         };
       }
 
-      $scope.getFriends = function () {
-        authFactory.getFriends($scope.currentUser).then(function(friends) {
-          // console.log('userObj from client', friends);
-          for (var i = 0; i < friends.length; i++) {
-            var friend = friends[i];
-            $scope.friends.push(createFriendObj(friend));
-          }
-        });
-      };
-
       $scope.friendRequests = [];
       $scope.acceptedfriendRequests = [];
 
       //represents the user selected in the friends list
       $scope.activeFriend = null;
 
+
+      //messaging
       $scope.startChat = function(friend){
         findFriend(friend.username, function(index){
           $scope.activeFriend = $scope.friends[index];
@@ -52,7 +43,6 @@ angular.module('Locket.chat', ['luegg.directives'])
             //show red encryption symbol/button (warning user chat is not secure)
       };
 
-      //messaging
       $scope.sendMessage = function(messageText){
         //reset message text
         $scope.messageText = '';
@@ -81,8 +71,6 @@ angular.module('Locket.chat', ['luegg.directives'])
             // newMessageFrom = $scope.friends[index];
             $scope.friends[index].messages.push(message);
             if ($scope.activeFriend === null || $scope.friends[index].username !== $scope.activeFriend.username) {
-              console.log('blaaargh');
-              console.log($scope.friends[index]);
               $scope.friends[index].unreadMessage = true;
             }
           }
@@ -137,16 +125,23 @@ angular.module('Locket.chat', ['luegg.directives'])
         });
       });
 
+
       //friends
+      $scope.getFriends = function(){
+        socket.emit('getFriends', {});
+      };
+
+      socket.on('friendsList', function(friends){
+        for (var i = 0; i < friends.length; i++) {
+          var friend = friends[i];
+          console.log(friend);
+          $scope.friends.push(createFriendObj(friend));
+        }
+      });
+
       $scope.addFriend = function(newFriendUsername){
         $scope.newFriendUsername = '';
         socket.emit('addFriend', { to: newFriendUsername });
-      };
-
-      $scope.logout = function() {
-        $scope.currentUser = null;
-        authFactory.logout();
-        socket.emit('logout');
       };
 
       $scope.acceptFriendRequest = function (friend) {
@@ -171,6 +166,13 @@ angular.module('Locket.chat', ['luegg.directives'])
         $scope.acceptedfriendRequests.splice(index, 1);
       };
 
+
+      //login/logout
+      $scope.logout = function() {
+        $scope.currentUser = null;
+        authFactory.logout();
+        socket.emit('logout');
+      };
 
       socket.on('friendLoggedIn', function(friend){
         findFriend(friend, function(index){
@@ -224,7 +226,9 @@ angular.module('Locket.chat', ['luegg.directives'])
         //if friend not in list
         cb(-1);
       }
-
+      
+      //get friends when we have verified the user is signed in
+      $scope.getFriends();
     }
   });
 });
