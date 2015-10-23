@@ -1,227 +1,232 @@
 angular.module('Locket.chat', ['luegg.directives'])
 
 .controller('chatController', function ($scope, authFactory, $stateParams, socket) {
-  socket.connect();
-  $scope.currentUser = $stateParams.currentUser;
-  $scope.friends = [];
+  authFactory.signedin().then(function(resp){
+    if (resp === "OK") {
 
-  function createFriendObj(friend) {
-    return {
-      service: "Locket",
-      username: friend,
-      name: friend + " daawwggg",
-      unreadMessage: false,
-      online: true,
-      messages: []
-    };
-  }
+      socket.connect();
+      $scope.currentUser = $stateParams.currentUser;
+      $scope.friends = [];
 
-  $scope.getFriends = function () {
-    authFactory.getFriends($scope.currentUser).then(function(friends) {
-      // console.log('userObj from client', friends);
-      for (var i = 0; i < friends.length; i++) {
-        var friend = friends[i];
-        $scope.friends.push(createFriendObj(friend));
+      function createFriendObj(friend) {
+        return {
+          service: "Locket",
+          username: friend,
+          name: friend + " daawwggg",
+          unreadMessage: false,
+          online: true,
+          messages: []
+        };
       }
-    });
-  };
 
-  $scope.friendRequests = [];
-  $scope.acceptedfriendRequests = [];
+      $scope.getFriends = function () {
+        authFactory.getFriends($scope.currentUser).then(function(friends) {
+          // console.log('userObj from client', friends);
+          for (var i = 0; i < friends.length; i++) {
+            var friend = friends[i];
+            $scope.friends.push(createFriendObj(friend));
+          }
+        });
+      };
 
-  //represents the user selected in the friends list
-  $scope.activeFriend = null;
+      $scope.friendRequests = [];
+      $scope.acceptedfriendRequests = [];
 
-  $scope.startChat = function(friend){
-    findFriend(friend.username, function(index){
-      $scope.activeFriend = $scope.friends[index];
-      if ($scope.friends[index].unreadMessage) {
-        $scope.friends[index].unreadMessage = false;
-      }
-    });
-    //if $scope.friends[username] has publicPGPKey
-      //update chat view with current conversation
-    //else
-      //if $scope.friends[username].service is us
-        //render messages in chat view
-      //else if username.service isnt us
-        //allow unencrypted chat
-        //show red encryption symbol/button (warning user chat is not secure)
-  };
+      //represents the user selected in the friends list
+      $scope.activeFriend = null;
 
-  //messaging
-  $scope.sendMessage = function(messageText){
-    //reset message text
-    $scope.messageText = '';
-    socket.emit('sendMessage', { to: $scope.activeFriend.username, message: messageText });
-    //if service is us
-      //if we have recipients pgp key
-        //encrypt and send message
-      //else
-        //notify user you are requesting recipient's pgp key
-        //socket.emit('requestKey', {to: recipient})
-    //else
-      //request other user's public key and save message contents to be encrypted on receipt of user's key 
-        //user would like to have an encrypted conversation with you:
-        //user's public key
-  };
+      $scope.startChat = function(friend){
+        findFriend(friend.username, function(index){
+          $scope.activeFriend = $scope.friends[index];
+          if ($scope.friends[index].unreadMessage) {
+            $scope.friends[index].unreadMessage = false;
+          }
+        });
+        //if $scope.friends[username] has publicPGPKey
+          //update chat view with current conversation
+        //else
+          //if $scope.friends[username].service is us
+            //render messages in chat view
+          //else if username.service isnt us
+            //allow unencrypted chat
+            //show red encryption symbol/button (warning user chat is not secure)
+      };
 
-  $scope.revokeMessage = function(message) {
-    if (message.from === $scope.currentUser) {
-      socket.emit('revokeMessage', message);
-    }
-  };
+      //messaging
+      $scope.sendMessage = function(messageText){
+        //reset message text
+        $scope.messageText = '';
+        socket.emit('sendMessage', { to: $scope.activeFriend.username, message: messageText });
+        //if service is us
+          //if we have recipients pgp key
+            //encrypt and send message
+          //else
+            //notify user you are requesting recipient's pgp key
+            //socket.emit('requestKey', {to: recipient})
+        //else
+          //request other user's public key and save message contents to be encrypted on receipt of user's key 
+            //user would like to have an encrypted conversation with you:
+            //user's public key
+      };
 
-  socket.on('newMessage', function(message){
-    findFriend(message.from, function(index){
-      if (index !== -1) {
-        // newMessageFrom = $scope.friends[index];
-        $scope.friends[index].messages.push(message);
-        if ($scope.activeFriend === null || $scope.friends[index].username !== $scope.activeFriend.username) {
-          console.log('blaaargh');
-          console.log($scope.friends[index]);
-          $scope.friends[index].unreadMessage = true;
+      $scope.revokeMessage = function(message) {
+        if (message.from === $scope.currentUser) {
+          socket.emit('revokeMessage', message);
         }
-      }
-    });
-  });
+      };
 
-  socket.on('messageSent', function(message){
-    findFriend(message.to, function(index){
-      if (index !== -1) {
-        $scope.friends[index].messages.push(message);
-      }
-    });
-  });
+      socket.on('newMessage', function(message){
+        findFriend(message.from, function(index){
+          if (index !== -1) {
+            // newMessageFrom = $scope.friends[index];
+            $scope.friends[index].messages.push(message);
+            if ($scope.activeFriend === null || $scope.friends[index].username !== $scope.activeFriend.username) {
+              console.log('blaaargh');
+              console.log($scope.friends[index]);
+              $scope.friends[index].unreadMessage = true;
+            }
+          }
+        });
+      });
 
-  socket.on('destroyMessage', function(message) {
-    findFriend(message.from, function(index){
-      if (index !== -1) {
-        var messageIndex = -1;
-        // iterate through messages to find one that matches message to be destroyed
-        for (var i = 0; i < $scope.friends[index].messages.length; i++) {
-          var thisMessage = $scope.friends[index].messages[i];
-          // if match found, set messageIndex to index in messages array
-          if (message.from === thisMessage.from && message.timestamp === thisMessage.timestamp && message.message === thisMessage.message) {
-            messageIndex = i;
-            break;
+      socket.on('messageSent', function(message){
+        findFriend(message.to, function(index){
+          if (index !== -1) {
+            $scope.friends[index].messages.push(message);
+          }
+        });
+      });
+
+      socket.on('destroyMessage', function(message) {
+        findFriend(message.from, function(index){
+          if (index !== -1) {
+            var messageIndex = -1;
+            // iterate through messages to find one that matches message to be destroyed
+            for (var i = 0; i < $scope.friends[index].messages.length; i++) {
+              var thisMessage = $scope.friends[index].messages[i];
+              // if match found, set messageIndex to index in messages array
+              if (message.from === thisMessage.from && message.timestamp === thisMessage.timestamp && message.message === thisMessage.message) {
+                messageIndex = i;
+                break;
+              }
+            }
+            if (messageIndex !== -1) {
+              $scope.friends[index].messages.splice(messageIndex, 1);
+            }
+          }
+        });
+      });
+
+      socket.on('deleteMessage', function(message) {
+        findFriend(message.to, function(index){
+          if (index !== -1) {
+            var messageIndex = -1;
+            // iterate through messages to find one that matches message to be destroyed
+            for (var i = 0; i < $scope.friends[index].messages.length; i++) {
+              var thisMessage = $scope.friends[index].messages[i];
+              // if match found, set messageIndex to index in messages array
+              if (message.from === thisMessage.from && message.timestamp === thisMessage.timestamp && message.message === thisMessage.message) {
+                messageIndex = i;
+                break;
+              }
+            }
+            if (messageIndex !== -1) {
+              $scope.friends[index].messages.splice(messageIndex, 1);
+            }
+          }
+        });
+      });
+
+      //friends
+      $scope.addFriend = function(newFriendUsername){
+        $scope.newFriendUsername = '';
+        socket.emit('addFriend', { to: newFriendUsername });
+      };
+
+      $scope.logout = function() {
+        $scope.currentUser = null;
+        authFactory.logout();
+        socket.emit('logout');
+      };
+
+      $scope.acceptFriendRequest = function (friend) {
+        socket.emit('friendRequestAccepted', {from: $scope.currentUser, to: friend});
+        for (var i = 0; i < $scope.friendRequests.length; i++) {
+          if (friend === $scope.friendRequests[i]) {
+            $scope.friendRequests.splice(i, 1);
+            $scope.friends.push(createFriendObj(friend));
           }
         }
-        if (messageIndex !== -1) {
-          $scope.friends[index].messages.splice(messageIndex, 1);
-        }
-      }
-    });
-  });
+      };
 
-  socket.on('deleteMessage', function(message) {
-    findFriend(message.to, function(index){
-      if (index !== -1) {
-        var messageIndex = -1;
-        // iterate through messages to find one that matches message to be destroyed
-        for (var i = 0; i < $scope.friends[index].messages.length; i++) {
-          var thisMessage = $scope.friends[index].messages[i];
-          // if match found, set messageIndex to index in messages array
-          if (message.from === thisMessage.from && message.timestamp === thisMessage.timestamp && message.message === thisMessage.message) {
-            messageIndex = i;
-            break;
+      $scope.ignoreFriendRequest = function (friend) {
+        for (var i = 0; i < $scope.friendRequests.length; i++) {
+          if (friend === $scope.friendRequests[i]) {
+            $scope.friendRequests.splice(i, 1);
           }
         }
-        if (messageIndex !== -1) {
-          $scope.friends[index].messages.splice(messageIndex, 1);
-        }
-      }
-    });
-  });
+      };
 
-  //friends
-  $scope.addFriend = function(newFriendUsername){
-    $scope.newFriendUsername = '';
-    socket.emit('addFriend', { to: newFriendUsername });
-  };
-
-  $scope.logout = function() {
-    $scope.currentUser = null;
-    authFactory.logout();
-    socket.emit('logout');
-  };
-
-  $scope.acceptFriendRequest = function (friend) {
-    socket.emit('friendRequestAccepted', {from: $scope.currentUser, to: friend});
-    for (var i = 0; i < $scope.friendRequests.length; i++) {
-      if (friend === $scope.friendRequests[i]) {
-        $scope.friendRequests.splice(i, 1);
-        $scope.friends.push(createFriendObj(friend));
-      }
-    }
-  };
-
-  $scope.ignoreFriendRequest = function (friend) {
-    for (var i = 0; i < $scope.friendRequests.length; i++) {
-      if (friend === $scope.friendRequests[i]) {
-        $scope.friendRequests.splice(i, 1);
-      }
-    }
-  };
-
-  $scope.acknowledgeFriendRequest = function (index) {
-    $scope.acceptedfriendRequests.splice(index, 1);
-  };
+      $scope.acknowledgeFriendRequest = function (index) {
+        $scope.acceptedfriendRequests.splice(index, 1);
+      };
 
 
-  socket.on('friendLoggedIn', function(friend){
-    findFriend(friend, function(index){
-      //if user is in friends list
-      if(index >= 0){
-        $scope.friends[index].online = true;
-      } else {
-        //if user is not in friends list, add them
-        $scope.friends.push(friend);
-      }
-    });
-  });
-  
-  socket.on('friendLoggedOut', function(friend){
-    findFriend(friend, function(index){
-      //verify user is in friends list
-      if(index >= 0){
-        $scope.friends[index].online = false;
-        if ($scope.activeFriend) {
-          if (friend === $scope.activeFriend.username) {
-            $scope.activeFriend = null;
+      socket.on('friendLoggedIn', function(friend){
+        findFriend(friend, function(index){
+          //if user is in friends list
+          if(index >= 0){
+            $scope.friends[index].online = true;
+          } else {
+            //if user is not in friends list, add them
+            $scope.friends.push(friend);
+          }
+        });
+      });
+      
+      socket.on('friendLoggedOut', function(friend){
+        findFriend(friend, function(index){
+          //verify user is in friends list
+          if(index >= 0){
+            $scope.friends[index].online = false;
+            if ($scope.activeFriend) {
+              if (friend === $scope.activeFriend.username) {
+                $scope.activeFriend = null;
+              }
+            }
+          }
+        });
+      });
+
+      socket.on('friendRequest', function(friendRequest){
+        
+        console.log('friend request received from ' + friendRequest.from);
+
+        $scope.friendRequests.push(friendRequest.from);
+      });
+
+      socket.on('friendRequestAccepted', function(acceptFriendObj) {
+        console.log('FRIEND REQ ACCEPTED', acceptFriendObj);
+        // acceptFriendObj.from
+
+        $scope.acceptedfriendRequests.push(acceptFriendObj.from);
+        $scope.friends.push(createFriendObj(acceptFriendObj.from));
+      });
+
+      //hoist helper functions
+      function findFriend(friend, cb){ 
+        for (var i = 0; i < $scope.friends.length; i++) { 
+          if($scope.friends[i].username === friend){
+            cb(i);
+            return;
           }
         }
+        //if friend not in list
+        cb(-1);
       }
-    });
-  });
 
-  socket.on('friendRequest', function(friendRequest){
-    
-    console.log('friend request received from ' + friendRequest.from);
-
-    $scope.friendRequests.push(friendRequest.from);
-  });
-
-  socket.on('friendRequestAccepted', function(acceptFriendObj) {
-    console.log('FRIEND REQ ACCEPTED', acceptFriendObj);
-    // acceptFriendObj.from
-
-    $scope.acceptedfriendRequests.push(acceptFriendObj.from);
-    $scope.friends.push(createFriendObj(acceptFriendObj.from));
-  });
-
-  //hoist helper functions
-  function findFriend(friend, cb){ 
-    for (var i = 0; i < $scope.friends.length; i++) { 
-      if($scope.friends[i].username === friend){
-        cb(i);
-        return;
-      }
     }
-    //if friend not in list
-    cb(-1);
-  }
-
+  });
 });
 
 
