@@ -2,7 +2,7 @@ var express = require('express');
 var parser = require('body-parser');
 var mongoose = require('mongoose');
 var passport = require('passport');
-require('./features/auth/passport');
+require('./features/auth/passport')(passport);;
 
 var session = exports.session = require("express-session")({
   secret: "mr meeseeks",
