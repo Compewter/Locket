@@ -13,7 +13,7 @@ angular.module('Locket.chat', ['luegg.directives'])
           username: friend,
           name: friend + " daawwggg",
           unreadMessage: false,
-          online: true,
+          online: false,
           messages: []
         };
       }
@@ -134,7 +134,6 @@ angular.module('Locket.chat', ['luegg.directives'])
       socket.on('friendsList', function(friends){
         for (var i = 0; i < friends.length; i++) {
           var friend = friends[i];
-          console.log(friend);
           $scope.friends.push(createFriendObj(friend));
         }
       });
@@ -209,7 +208,6 @@ angular.module('Locket.chat', ['luegg.directives'])
 
       socket.on('friendRequestAccepted', function(acceptFriendObj) {
         console.log('FRIEND REQ ACCEPTED', acceptFriendObj);
-        // acceptFriendObj.from
 
         $scope.acceptedfriendRequests.push(acceptFriendObj.from);
         $scope.friends.push(createFriendObj(acceptFriendObj.from));

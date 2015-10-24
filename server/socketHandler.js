@@ -1,8 +1,7 @@
-var passport = require('passport');
 var app = require(__dirname + "/server.js");
 var io = module.exports.io = require('socket.io').listen(app.server);
 
-var UserController = require("./features/users/userController.js"); 
+var UserController = require("./features/users/userController.js");
 var UserModel = require("./features/users/userModel.js");
 
 console.log("Socket.io server listening");
@@ -25,42 +24,42 @@ io.on('connection', function (socket) {
   userMap[username] = socket.id;
   console.log(username + ' connected');
 
-    //let friends know user has logged in
-    notifyFriends('friendLoggedIn', username);
+  //let friends know user has logged in
+  notifyFriends('friendLoggedIn', username);
 
-    socket.on('sendMessage', function (msg) {
-      sendMessage(msg, username);
-    });
+  socket.on('sendMessage', function (msg) {
+    sendMessage(msg, username);
+  });
 
-    socket.on('revokeMessage', function (msg) {
-      revokeMessage(msg, username);
-    });
+  socket.on('revokeMessage', function (msg) {
+    revokeMessage(msg, username);
+  });
 
-    socket.on('getFriends', function(){
-      getFriends(username);
-    });
+  socket.on('getFriends', function(){
+    getFriends(username);
+  });
 
-    socket.on('addFriend', function (friendRequestObj) {
-      addFriend(friendRequestObj, username);
-    });
+  socket.on('addFriend', function (friendRequestObj) {
+    addFriend(friendRequestObj, username);
+  });
 
-    socket.on('friendRequestAccepted', function (acceptedObj) {
-      friendRequestAccepted(acceptedObj, username);
-    });
+  socket.on('friendRequestAccepted', function (acceptedObj) {
+    friendRequestAccepted(acceptedObj, username);
+  });
 
-    socket.on('disconnect', function () {
-      disconnect(username, expressCookie, socket);
-    });
+  socket.on('disconnect', function () {
+    disconnect(username, expressCookie);
+  });
 
-    // Echo function, useful for debugging & testing
-    socket.on('echo', function (obj) {
-      socket.emit(obj.name, obj.data);
-    });
+  // Echo function, useful for debugging & testing
+  socket.on('echo', function (obj) {
+    socket.emit(obj.name, obj.data);
+  });
 
-    socket.on('logout', function () {
-      console.log(username + ' logged out');
-      socket.disconnect();
-    });
+  socket.on('logout', function () {
+    console.log(username + ' logged out');
+    socket.disconnect();
+  });
 
 });
 
@@ -69,7 +68,6 @@ var sendMessage = function (msg, username) {
   // msg looks like {to: xx, message: }
   // We need to look up the to
   // And then we need to send it to that guy
-  console.log(msg);
 
   var recipientSocket = userMap[msg.to];
   
@@ -102,13 +100,20 @@ var getFriends = function(username){
     if (err) {
       throw err;
     } else {
-      io.to(userMap[username]).emit('friendsList',user.friends);
+      //send all friends to client
+      io.to(userMap[username]).emit('friendsList', user.friends);
+
+      //let client know which friends are online
+      for (var i = 0; i < user.friends.length; i++) {
+        if(userMap[user.friends[i]]){
+          io.to(userMap[username]).emit('friendLoggedIn', user.friends[i]);
+        }
+      };
     }
   });
 };
 
 var addFriend = function (friendRequestObj, username) {
-  console.log(friendRequestObj.to);
   var recipientSocket = userMap[friendRequestObj.to];
   
   if (recipientSocket) {
@@ -120,11 +125,9 @@ var addFriend = function (friendRequestObj, username) {
   } else {
 
   }
-  console.log(username);
 };
 
 var friendRequestAccepted = function (acceptFriendObj, username) {
-  console.log("accepted", acceptFriendObj);
   if(acceptFriendObj.to === username || acceptFriendObj.from === username){
     var recipientSocket = userMap[acceptFriendObj.to];
     if (recipientSocket) {
@@ -135,7 +138,6 @@ var friendRequestAccepted = function (acceptFriendObj, username) {
       // perhaps have an unsent friend request storage
     }
   }
-
 };
 
 var disconnect = function (username, expressCookie) {
@@ -146,7 +148,7 @@ var disconnect = function (username, expressCookie) {
 
   notifyFriends('friendLoggedOut', username);
   console.log('disconnect sessionmap', sessionMap);
-  console.log('disconnect usermap', userMap); 
+  console.log('disconnect usermap', userMap);
 };
 
 var notifyFriends = function(event, username){
