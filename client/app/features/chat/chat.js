@@ -5,6 +5,10 @@ angular.module('Locket.chat', ['luegg.directives'])
     if (resp === 'OK') {
       socket.connect();
 
+      window.onbeforeunload = function(event){
+        return "All of your messages will be lost";
+      };
+
       var keyring = encryptionFactory.generateKeyPair();
       var publicKey;
       // send public key to friends on login
@@ -317,7 +321,7 @@ angular.module('Locket.chat', ['luegg.directives'])
         $scope.friends.push(newFriend);
         $scope.getFriends();
 
-        // socket.emit('sendPGP', publicKey);
+        socket.emit('sendPGP', publicKey);
       });
 
       //hoist helper functions
