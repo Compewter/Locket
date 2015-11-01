@@ -107,14 +107,21 @@ angular.module('Locket.chat', ['luegg.directives', 'ngAnimate'])
 
         // Receive new facebook message(s)
         var partialPGPMessage = '';
-        if (event.data.type && (event.data.type === 'receivedNewFacebookMessage')) {
+        if (event.data.type && (event.data.type === 'receivedNewFacebookMessage' || event.data.type === 'receivedNewHangoutsMessage')) {
           var username = event.data.text.with;
           var fullname = event.data.text.name;
           var newMessages = event.data.text.text;
+          var service = 'unknown';
+          if(event.data.type === 'receivedNewFacebookMessage'){
+            service = 'Facebook';
+          }else if(event.data.type === 'receivedNewHangoutsMessage'){
+            service = 'Hangouts';
+          }
+
           findFriend(username, function(index) {
 
             if (index === -1 && username !== 'me') {
-              var newFriend = createFriendObj(username, true, fullname, "Facebook");
+              var newFriend = createFriendObj(username, true, fullname, service);
               $scope.friends.push(newFriend);
               index = $scope.friends.length-1;
             }
@@ -330,7 +337,6 @@ angular.module('Locket.chat', ['luegg.directives', 'ngAnimate'])
 
         //reset message text
         $scope.messageText = '';
-
         if ($scope.activeFriend.service === 'Locket') {
           // encrypt typed message
           if (messageText) {
@@ -372,6 +378,7 @@ angular.module('Locket.chat', ['luegg.directives', 'ngAnimate'])
           // Read the file
           if (f) { r.readAsDataURL(f); }
         } else if ($scope.activeFriend.service === 'Facebook') {
+          console.log('facebook')
           if ($scope.activeFriend.key) {
             encryptionFactory.encryptMessage({pubkey: $scope.activeFriend.key}, messageText)
             .then(function (encryptedMessage) {
@@ -382,9 +389,11 @@ angular.module('Locket.chat', ['luegg.directives', 'ngAnimate'])
                 isEncrypted: true
               });
             });
-          } else {
+          }else { 
             window.postMessage({ type: 'sendFacebookMessage', to: $scope.activeFriend.username, text: messageText}, '*');
           }
+        }else if ($scope.activeFriend.service === 'Hangouts'){
+          console.log('send hangouts message');
         }
       };
 
