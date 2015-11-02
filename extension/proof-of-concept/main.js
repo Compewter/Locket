@@ -4,7 +4,7 @@ console.log('main');
 // User navigated to our service. Tell our app to start up the facebook background script
 chrome.runtime.sendMessage({ event: 'injectFacebookiFrame', data: '' });
 
-// Receive update from background process (Facebook wants to communicate)
+// Receive update from background processes
 chrome.runtime.onMessage.addListener(function(message) {
   if (message.event === 'stillAlive') {
     chrome.runtime.sendMessage({ event: 'stillAlive', data: '' });
@@ -105,6 +105,38 @@ window.addEventListener('message', function(event) {
       }
     });
   }
+
+  //BEGIN HANGOUTS LOGIC
+
+  // App requesting hangouts friends
+  if (event.data.type && (event.data.type === 'getHangoutsFriends')) {
+    chrome.runtime.sendMessage({
+      event: 'getHangoutsFriends',
+      data: ''
+    });
+  }
+
+  // App requesting hangouts friends
+  if (event.data.type && (event.data.type === 'readHangoutsMessages')) {
+    chrome.runtime.sendMessage({
+      event: 'readHangoutsMessages',
+      data: {
+        to: event.data.to,
+      }
+    });
+  }
+
+  // App sending hangouts message
+  if (event.data.type && (event.data.type === 'sendHangoutsMessage')) {
+    chrome.runtime.sendMessage({
+      event: 'sendHangoutsMessage',
+      data: {
+        to: event.data.to,
+        text: event.data.text
+      }
+    });
+  }
+    
 });
 
 // PROOF OF CONCEPT MESSAGE SENDING & RECEIPT
