@@ -39,12 +39,10 @@ angular.module('Locket.chat', ['luegg.directives', 'ngAnimate'])
       // on any change in activeFriend key, set $scope.encrypted based on whether there is a public key for the friend
       $scope.$watch('activeFriend.key', function (newValue, oldValue) {
         $scope.encrypted = newValue ? true : false;
-        console.log('active friend key is now ',$scope.activeFriend, newValue);
       });
 
       $scope.$watch('encrypted', function (newValue, oldValue) {
         $('#enabled').toggleClass('checked', newValue);
-        console.log('encrypted triggered');
       });
 
       $('#enabled').on('click', function (event) {
@@ -135,15 +133,12 @@ angular.module('Locket.chat', ['luegg.directives', 'ngAnimate'])
                 if (newMessages[i].slice(-25) === '-----END PGP MESSAGE-----') {
                   var encryptedMessage = partialPGPMessage;
                   partialPGPMessage = '';
-                  decryptMessage(encryptedMessage, index);
+                  decryptMessage(encryptedMessage, index, event.data.text.from, service);
                 }
               } else if (newMessages[i].substr(0,27) === '-----BEGIN PGP MESSAGE-----') {
-                console.log(newMessages[i].slice(-26).trim());
                 if (newMessages[i].slice(-26).trim() === '-----END PGP MESSAGE-----'){
-                  console.log("full message");
-                  decryptMessage(newMessages[i], index);
+                  decryptMessage(newMessages[i], index, event.data.text.from, service);
                 }else{
-                  console.log("partial pgp");
                   partialPGPMessage = newMessages[i];
                 }
               }
@@ -206,7 +201,6 @@ angular.module('Locket.chat', ['luegg.directives', 'ngAnimate'])
                 //respond with myKey, mySession, friendSession
                 console.log('Updating pgpKey for', $scope.friends[index].username);
                 
-                console.log('Storing public key for user', $scope.friends[index].username);
                 // Store that friend's public key
                 $scope.friends[index].key = friendKey;
                 $scope.friends[index].userIsEncrypted = false;
@@ -636,12 +630,10 @@ angular.module('Locket.chat', ['luegg.directives', 'ngAnimate'])
         window.postMessage({ type: 'checkExtension', text: ''}, '*');
       }
 
-      function decryptMessage(encryptedMessage, index){
-        console.log("received encrypted message");
+      function decryptMessage(encryptedMessage, index, from, service){
         keyring.then(function(keypair) {
-          console.log('inside keyring');
           // If we sent the message, use the local decrypted version
-          if (event.data.text.from === 'me') {
+          if (from === 'me') {
             // Create a message object
             var message = {
               encryptedMessage: encryptedMessage,
@@ -658,7 +650,7 @@ angular.module('Locket.chat', ['luegg.directives', 'ngAnimate'])
             }else if(service === "Hangouts"){
               unsentMessages = $scope.friends[index].unsentHangoutsMessages;
             }
-
+            console.log("unsent", unsentMessages);
             for (var j = 0; j < unsentMessages.length; j++) {
               if (unsentMessages[j].encryptedMessage.replace(/[^a-z0-9]/gmi, '') === message.encryptedMessage.replace(/[^a-z0-9]/gmi,'')) {
                 message.message = unsentMessages[j].message;
@@ -678,8 +670,6 @@ angular.module('Locket.chat', ['luegg.directives', 'ngAnimate'])
             }
           } else {
             // Otherwise, decrypt the message using our private key
-            console.log('KEYPAIR', keypair);
-            console.log('enc msg', encryptedMessage);
             encryptionFactory.decryptMessage(keypair, encryptedMessage)
             .then(function (decryptedMessage) {
               var message = {
@@ -700,7 +690,6 @@ angular.module('Locket.chat', ['luegg.directives', 'ngAnimate'])
               $scope.$apply();
             })
             .catch(function() {
-              console.log('EXPIRED MSG FROM NON-ME');
               var message = {
                 to: $scope.currentUser,
                 from: $scope.friends[index].username,

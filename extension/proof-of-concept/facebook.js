@@ -1,6 +1,6 @@
 console.log('facebook');
 var backgroundCheckInterval = 500;
-var rescanDOMInteral = 500;
+var rescanDOMInterval = 500;
 var seenMessageGroup = {};
 var usersWithNewMessages = [];
 var messagesToPost = {};
@@ -219,7 +219,7 @@ $(document).ready(function() {
       if (scanDOM) {
         rescanFacebookDom();
       }
-    }, rescanDOMInteral);
+    }, rescanDOMInterval);
   }
 
   function postFacebookMessage(message) {
