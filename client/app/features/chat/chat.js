@@ -193,7 +193,6 @@ angular.module('Locket.chat', ['luegg.directives', 'ngAnimate'])
                 //state is encrypted
                 // set indicator for whether message is encrypted
                 $scope.friends[index].userIsEncrypted = true;
-
                 // 
                 //window.postMessage({ type: 'bounce', text: }, '*');
               } else {
