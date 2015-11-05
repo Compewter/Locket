@@ -1,5 +1,9 @@
-/*navbar css for the chat page*/
+/*hide horizontal scroll bar*/
+body {
+  overflow-x: hidden;
+}
 
+/*navbar css for the chat page*/
 .navbar {
   box-shadow: 0 8px 6px -6px #999;
 }
